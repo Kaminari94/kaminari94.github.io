@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kami's Projects Hub</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+      [x-cloak] { display: none !important; }
+
+      .glass {
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(14px);
+      }
+
+      .grid-bg {
+        background-image:
+          linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 24px 24px;
+      }
+
+      .soft-pulse {
+        animation: soft-pulse 2.2s ease-in-out infinite;
+      }
+
+      @keyframes soft-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.15); }
+        50% { box-shadow: 0 0 0 12px rgba(59,130,246,0); }
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-slate-950 text-slate-100 grid-bg overflow-x-hidden">
+    <div x-data="projectsHub()" x-init="init()" x-cloak class="relative min-h-screen">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]"></div>
+
+      <main class="relative z-10 max-w-7xl mx-auto px-4 py-6 md:py-10">
+        <header class="mb-8 md:mb-10">
+          <div class="glass rounded-3xl border border-white/10 p-6 md:p-8 shadow-2xl shadow-black/30">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div class="max-w-3xl">
+                <div class="inline-flex items-center gap-2 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-sky-300">
+                  GitHub Pages Portfolio Hub
+                </div>
+
+                <h1 class="mt-4 text-4xl md:text-6xl font-black tracking-tight">
+                  Kami's Projects
+                </h1>
+
+                <p class="mt-4 text-sm md:text-base text-slate-300">
+                  A central home page for my GitHub projects, with live demos when available. GW2-related repos are pinned at the top automatically.
+                </p>
+              </div>
+
+              <div class="flex flex-col gap-3 min-w-[260px]">
+                <div class="flex items-center gap-2 text-xs text-slate-400">
+                  <div class="h-2.5 w-2.5 rounded-full" :class="loaded ? 'bg-emerald-400' : 'bg-amber-400'"></div>
+                  <span x-text="status"></span>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                  <div class="rounded-2xl border border-white/10 bg-slate-900/65 p-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Total</div>
+                    <div class="mt-1 text-2xl font-black text-white" x-text="repos.length"></div>
+                  </div>
+
+                  <div class="rounded-2xl border border-white/10 bg-slate-900/65 p-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Pages</div>
+                    <div class="mt-1 text-2xl font-black text-white" x-text="pagesReposCount"></div>
+                  </div>
+
+                  <div class="rounded-2xl border border-white/10 bg-slate-900/65 p-3">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">GW2</div>
+                    <div class="mt-1 text-2xl font-black text-white" x-text="gw2Repos.length"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_auto_auto]">
+              <div>
+                <label for="repo-search" class="block text-sm font-semibold text-slate-200 mb-2">
+                  Search projects
+                </label>
+                <div class="relative">
+                  <div class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.85-5.15a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" />
+                    </svg>
+                  </div>
+
+                  <input
+                    id="repo-search"
+                    type="text"
+                    x-model="searchQuery"
+                    placeholder="Search by repo name, description, language..."
+                    class="w-full rounded-2xl border border-white/10 bg-slate-900/80 pl-12 pr-4 py-4 text-base text-white outline-none transition focus:border-sky-400/60 focus:ring-4 focus:ring-sky-400/10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-slate-200 mb-2">
+                  View
+                </label>
+                <select
+                  x-model="viewMode"
+                  class="w-full rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-4 text-white outline-none transition focus:border-sky-400/60 focus:ring-4 focus:ring-sky-400/10"
+                >
+                  <option value="pages">Pages projects only</option>
+                  <option value="all">All repositories</option>
+                </select>
+              </div>
+
+              <div class="flex items-end">
+                <button
+                  type="button"
+                  @click="fetchRepos()"
+                  class="w-full rounded-2xl bg-sky-500/15 px-5 py-4 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25"
+                >
+                  Reload
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section x-show="gw2Repos.length > 0" class="mb-10">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <div class="text-xs uppercase tracking-[0.18em] text-slate-500">Pinned section</div>
+              <h2 class="mt-1 text-2xl md:text-3xl font-black tracking-tight text-white">GW2 Projects</h2>
+            </div>
+
+            <div class="rounded-full border border-emerald-400/15 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200 soft-pulse">
+              Always shown first
+            </div>
+          </div>
+
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <template x-for="repo in gw2Repos" :key="repo.id">
+              <article class="glass rounded-3xl border border-sky-400/20 p-5 md:p-6 shadow-2xl shadow-black/20 transition hover:border-sky-400/40 hover:-translate-y-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h3 class="truncate text-2xl font-black text-white" x-text="repo.name"></h3>
+
+                      <span class="rounded-full bg-sky-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-sky-300">
+                        GW2
+                      </span>
+
+                      <span
+                        x-show="repo.has_pages"
+                        class="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-300"
+                      >
+                        Live
+                      </span>
+                    </div>
+
+                    <p class="mt-3 min-h-[4rem] text-sm text-slate-300" x-text="repo.description || 'No description yet.'"></p>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300" x-show="repo.language" x-text="repo.language"></span>
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">★ <span x-text="repo.stargazers_count"></span></span>
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">Forks <span x-text="repo.forks_count"></span></span>
+                </div>
+
+                <div class="mt-4 text-xs text-slate-500">
+                  Updated <span x-text="formatDate(repo.updated_at)"></span>
+                </div>
+
+                <div class="mt-5 flex flex-wrap gap-3">
+                  <a
+                    x-show="repo.live_url"
+                    :href="repo.live_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="rounded-2xl bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25"
+                  >
+                    Open Live Site
+                  </a>
+
+                  <a
+                    :href="repo.html_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+                  >
+                    View Repository
+                  </a>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <section>
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <div class="text-xs uppercase tracking-[0.18em] text-slate-500">Main collection</div>
+              <h2 class="mt-1 text-2xl md:text-3xl font-black tracking-tight text-white">Other Projects</h2>
+            </div>
+
+            <div class="text-sm text-slate-400">
+              <span x-text="otherRepos.length"></span> shown
+            </div>
+          </div>
+
+          <template x-if="loaded && otherRepos.length === 0">
+            <div class="glass rounded-3xl border border-white/10 p-6 text-slate-400">
+              No repositories match your current filter.
+            </div>
+          </template>
+
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" x-show="otherRepos.length > 0">
+            <template x-for="repo in otherRepos" :key="repo.id">
+              <article class="glass rounded-3xl border border-white/10 p-5 md:p-6 shadow-2xl shadow-black/20 transition hover:border-sky-400/25 hover:-translate-y-1">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h3 class="truncate text-xl font-bold text-white" x-text="repo.name"></h3>
+
+                      <span
+                        x-show="repo.has_pages"
+                        class="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-300"
+                      >
+                        Live
+                      </span>
+                    </div>
+
+                    <p class="mt-3 min-h-[4rem] text-sm text-slate-400" x-text="repo.description || 'No description yet.'"></p>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2 text-xs">
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300" x-show="repo.language" x-text="repo.language"></span>
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">★ <span x-text="repo.stargazers_count"></span></span>
+                  <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">Forks <span x-text="repo.forks_count"></span></span>
+                </div>
+
+                <div class="mt-4 text-xs text-slate-500">
+                  Updated <span x-text="formatDate(repo.updated_at)"></span>
+                </div>
+
+                <div class="mt-5 flex flex-wrap gap-3">
+                  <a
+                    x-show="repo.live_url"
+                    :href="repo.live_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="rounded-2xl bg-sky-500/15 px-4 py-3 text-sm font-semibold text-sky-200 transition hover:bg-sky-500/25"
+                  >
+                    Open Live Site
+                  </a>
+
+                  <a
+                    :href="repo.html_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
+                  >
+                    View Repository
+                  </a>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      function projectsHub() {
+        return {
+          username: 'Kaminari94',
+          repos: [],
+          loaded: false,
+          status: 'Loading repositories...',
+          searchQuery: '',
+          viewMode: 'pages',
+
+          async init() {
+            await this.fetchRepos();
+          },
+
+          async fetchRepos() {
+            this.loaded = false;
+            this.status = 'Loading repositories...';
+
+            try {
+              const response = await fetch(`https://api.github.com/users/${this.username}/repos?per_page=100&sort=updated`);
+              const data = await response.json();
+
+              if (!Array.isArray(data)) {
+                throw new Error('Unexpected GitHub API response');
+              }
+
+			  this.repos = data
+			    .filter(repo => !repo.fork)
+			    .filter(repo => !this.isHiddenRepo(repo))
+			    .map(repo => ({
+		  	  	  ...repo,
+				  live_url: this.buildLiveUrl(repo),
+				  is_gw2: this.isGw2Repo(repo),
+			    }))
+			    .sort((a, b) => {
+				  if (a.is_gw2 !== b.is_gw2) return Number(b.is_gw2) - Number(a.is_gw2);
+				  if (a.has_pages !== b.has_pages) return Number(b.has_pages) - Number(a.has_pages);
+				  return new Date(b.updated_at) - new Date(a.updated_at);
+			    });
+
+              this.loaded = true;
+              this.status = `Ready • ${this.repos.length} repositories loaded`;
+            } catch (error) {
+              console.error(error);
+              this.repos = [];
+              this.loaded = false;
+              this.status = 'Failed to load repositories';
+            }
+          },
+		  
+		  isHiddenRepo(repo) {
+		    return repo.name.toLowerCase() === `${this.username.toLowerCase()}.github.io`;
+		  },
+		  
+          isGw2Repo(repo) {
+            const haystack = [
+              repo.name || '',
+              repo.description || '',
+              ...(repo.topics || [])
+            ].join(' ').toLowerCase();
+
+            return [
+			  'gw2',
+			  'guild wars',
+			  'guildwars',
+			  'trading post',
+			  'tp',
+			  'undercut',
+			  'sell order',
+			  'buy order',
+			  'leaderboard',
+			  'ecto',
+			  'mystic coin'
+		    ].some(keyword => haystack.includes(keyword));
+          },
+
+          buildLiveUrl(repo) {
+            if (repo.homepage && repo.homepage.trim() !== '') {
+              return repo.homepage.trim();
+            }
+
+            if (!repo.has_pages) {
+              return '';
+            }
+
+            const userSiteRepo = `${this.username.toLowerCase()}.github.io`;
+            if (repo.name.toLowerCase() === userSiteRepo) {
+              return `https://${this.username}.github.io/`;
+            }
+
+            return `https://${this.username}.github.io/${repo.name}/`;
+          },
+
+          get pagesReposCount() {
+            return this.repos.filter(repo => repo.has_pages).length;
+          },
+
+          get filteredRepos() {
+            let result = [...this.repos];
+
+            if (this.viewMode === 'pages') {
+              result = result.filter(repo => repo.has_pages);
+            }
+
+            const q = this.searchQuery.trim().toLowerCase();
+            if (!q) return result;
+
+            return result.filter(repo => {
+              const haystack = [
+                repo.name,
+                repo.description || '',
+                repo.language || '',
+                ...(repo.topics || [])
+              ].join(' ').toLowerCase();
+
+              return haystack.includes(q);
+            });
+          },
+
+          get gw2Repos() {
+            return this.filteredRepos.filter(repo => repo.is_gw2);
+          },
+
+          get otherRepos() {
+            return this.filteredRepos.filter(repo => !repo.is_gw2);
+          },
+
+          formatDate(value) {
+            try {
+              return new Date(value).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              });
+            } catch {
+              return value;
+            }
+          }
+        };
+      }
+    </script>
+  </body>
+</html>
